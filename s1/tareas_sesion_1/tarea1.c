@@ -1,7 +1,7 @@
 /*
 tarea1.c
 Trabajo con llamadas al sistema del Sistema de Archivos ''POSIX 2.10 compliant''
-Probar tras la ejecución del programa: $>cat archivo y $> od -c archivo
+Probar tras la ejecuciï¿½n del programa: $>cat archivo y $> od -c archivo
 */
 #include<unistd.h>
 #include<stdio.h>
@@ -32,7 +32,7 @@ if(write(fd,buf1,10) != 10) {
 	exit(EXIT_FAILURE);
 }
 
-if(lseek(fd,40,SEEK_SET) < 0) {
+if(lseek(fd,0,SEEK_END) < 0) {
 	perror("\nError en lseek");
 	exit(EXIT_FAILURE);
 }

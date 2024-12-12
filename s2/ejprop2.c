@@ -29,19 +29,16 @@ int main(int argc, char * argv[]){
 
     const char  *path = argv[1];
     long permisos = strtol(argv[2], NULL, 8);
-    /*convierte una cadena de caracteres en un número entero largo (long int)
-    parametros:
-        -nptr:   Un puntero a la cadena que se desea convertir.
-        -endptr: Un puntero a un puntero de carácter. almacenará aquí la 
-                 dirección del primer carácter que no pudo convertir.
-        -base:   La base del número en la cadena.
-    */
+    // convierte argv[2] en un entero largo en base 8 (si puede)
+
+    umask(0); //importante para establecer los permisos con la mascara correcta
+
 
     // Abre el directorio
     DIR *dir = opendir(path);
     if (dir == NULL) { //control de errores
         perror("Error al abrir el directorio");
-        return 2;
+        exit(-1);
     }
 
     // crea la estructura del directorio para leer todos los archivos
@@ -53,19 +50,21 @@ int main(int argc, char * argv[]){
         snprintf(filepath, sizeof(filepath), "%s/%s", path, entry->d_name);
 
         //obtener informacion del archivo
-        if (stat(filepath, &statbuf) == -1){
-            perror("Error al obtener informacion del archivo");
-            return 3;
-        }
-        else{
+        if (stat(filepath, &statbuf) != -1){
+                
             if (S_ISREG(statbuf.st_mode)){
                 
                 if (chmod(filepath, permisos) == -1){
                     perror("Error al cambiar los permisos del archivo");
-                    return 4;
+                    exit(-1);
                 }
                 printf("%s %o %lo\n", entry->d_name, statbuf.st_mode & 0777, permisos);
             }
         }
+        else{
+            perror("Error al obtener informacion del archivo");
+            exit(-1);
+        }
     }
+    closedir(dir);
 }
