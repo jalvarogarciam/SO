@@ -22,7 +22,7 @@ int main(int argc, char * argv[]){
     int bg = strcmp(argv[argc-1], "bg") == 0? 1:0;
     if (bg) argc--;
     
-    const char * args[argc];
+    char * args[argc];
     for (int i=1; i<argc; i++){
         args[i-1]=argv[i];
     }
@@ -32,27 +32,31 @@ int main(int argc, char * argv[]){
     if (bg){
         int pid=fork();
         if (pid<0){
-            perror("No se pudo crear proceso");
+            perror("Error en execvp");;
             exit(-1);
         }
-        const char * args[argc];
-        for (int i=1; i<argc; i++){
-            args[i-1]=argv[i];
-        }
-        args[argc-1]=NULL;
-        if (execvp(args[0], args) == 0){
+
+        else if (pid == 0){
+            execvp(args[0], args);
             perror("Error en execv"); 
             exit(-1);
         }
-        exit(0);
+
+        
 
     }
     else{
-        if (execvp(args[0], args) == 0){
-            perror("Error en execv"); 
-            exit(-1);
-        }
+        execvp(args[0], args);
+        perror("Error en execv"); 
+        exit(-1);
     }
-    
+
+    // En el caso de BG, el padre espera a que el hijo termine, y va haciendo otras cosas
+    // Si no es BG, el programa no llegaría a esta parte del código	
+
+    printf("%s: mientras tanto yo voy haciendo otras cosas en el foreground...\n", argv[0]);
+    char * numeros[] = {"uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", NULL};
+    for (int i=0; i<10; i++){  printf("%s: %s\n", argv[0], numeros[i]); sleep(1);}
+    wait(NULL);
     return 0;
 }

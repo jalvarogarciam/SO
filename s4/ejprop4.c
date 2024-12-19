@@ -18,14 +18,6 @@ recuperar el valor de cada suma en el ámbito de proceso padre (consultar relaci
 sumar los dos valores y mostrarlos por pantalla. 
 También deberá mostrar su PID para confirmar que es el padre de los dos procesos hijos creados.
 */
-
-
-int sumarray(int * array, size_t size){
-    int suma = 0;
-    for (int i=0; i<size; i++) suma += array[i];
-    return suma;
-}
-
 int main(int argc, char *argv[]) {
 
 
@@ -34,67 +26,91 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
-    int fd1[2];
-    int fd2[2];
-    int bytesLeidos, bytesLeidos2, val1, val2;
-    pid_t esclavo1, esclavo2;
+    char path_sumador[] = "./bin/sumador";
 
-    int n = argc-1;
-    int mitad = n/2;
-
-    char *numeros1[mitad+2];
-    char *numeros2[n-mitad+2];
-    numeros1[0] = numeros1[2] = "./esclavo";
-
-    for (int i=1; i<=mitad; i++){
-        numeros1[i]=argv[i];
-    }
-    numeros1[mitad+1]=NULL;
-
-    for (int i=1; i<=n; i++){
-        numeros2[i-mitad]=argv[i];
+    int pipefd1[2], pipefd2[2];
+    if (pipe(pipefd1)<0 || pipe(pipefd2)<0){
+        perror("Error en pipe");
+        exit(-1);
     }
 
-    pipe(fd1);pipe(fd2);
 
-    if ((esclavo1=fork()) < 0){
-        gestion error
-    }
-    else if (esclavo1==0){
-        close(fd1[0]);
-        dup2(fd1[1], STDOUT_FILENO);
-        if (execv("./esclavo", numeros1)<1){
-            gestion error
+    // cantidad de numeros que tendra el primer esclavo
+    int mitad= (argc-1)/2.0 + 0.5;
+
+    char *args1[mitad+2], *args2[(argc-1)-mitad+2];
+    args1[0]=args2[0]=path_sumador; //primer elemento es el path del programa
+    args1[mitad+2-1]=NULL;
+    args2[(argc-1)-mitad+2-1]=NULL; //ultimo elemento es NULL
+
+    for (int i=1; i<=mitad; i++) args1[i]=argv[i];
+    for (int i=1; i<=(argc-1)-mitad; i++) args2[i]=argv[i+mitad];
+
+
+    //Crea el proceso de los primeros numeros...
+    int pid1 = fork();
+    if (pid1<0){
+        perror("Fallo en fork 1");
+        exit(-1);
+    }else if (pid1==0){
+        close(pipefd1[0]); //el proceso esclavo no quiere leer.
+        
+        //Duplica la pipefd1[1] en el descriptor de la salida estandar
+        dup2(pipefd1[1], STDOUT_FILENO);
+        close(pipefd1[1]); 
+        //...cerramos pipefd1 porque ya no lo vamos a usar.
+        
+        if (execv(path_sumador, args1)<0){
+            perror("Error en execv 1");
+            exit(-1);
         }
-    }else{
-        close(fd1[1]);
-        while((bytesLeidos=read(fd1[0], &val1, sizeof(int)) > 0 )){
-            printf("Suma hijo 1: %d",val1);
-        }
-        close(fd1[0]);
-        printf("\n");
     }
 
-    if ((esclavo2=fork()) < 0){
-        gestion error
-    }
-    else if (esclavo2==0){
-        close(fd1[0]);
-        dup2(fd1[1], STDOUT_FILENO);
-        if (execv("./esclavo", numeros2)<1){
-            gestion error
+
+    //Crea el proceso del resto de numeros...
+    int pid2 = fork();
+    if (pid2<0){
+        perror("Fallo en fork 2");
+        exit(-1);
+    }else if (pid2==0){
+        printf("%i\n",pipefd2[0]);
+        close(pipefd2[0]); //el proceso esclavo no quiere leer.
+        printf("%i\n",pipefd2[0]);
+
+        //Duplica la pipefd2[1] en el descriptor de la salida estandar
+        dup2(pipefd2[1], STDOUT_FILENO);
+        close(pipefd2[1]); 
+        //...cerramos pipefd2 porque ya no lo vamos a usar.
+
+        if (execv(path_sumador, args2)<0){
+            perror("Error en execv 2");
+            exit(-1);
         }
-    }else{
-        close(fd2[1]);
-        while((bytesLeidos2=read(fd2[0], &val2, sizeof(int)) > 0 )){
-            printf("Suma hijo 1: %d",val2);
-        }
-        close(fd2[0]);
-        printf("\n");
     }
-    printf("resultado %i\n", val1+val2);
-    return 0;
 
 
+    //Cierra el descriptor de escritura padre->hijos
+    if (close(pipefd1[1])<0 || close(pipefd2[1])<0){
+        perror("Error en close del pipefd padre");
+        exit(-1);
+    }
 
+    //espera a que terminen...
+    wait(NULL); wait(NULL);
+
+    int val1, val2, bytes_read;
+    //lee 4 bytes de ambos pipes y los guarda en val1 y val2
+    if ((bytes_read=read(pipefd1[0], &val1, sizeof(int))) < 0  || 
+        (bytes_read=read(pipefd2[0], &val2, sizeof(int))) < 0 ){
+        perror("Error en read");
+        exit(-1);
+    }
+
+    //Cierra los pipes...
+    if (close(pipefd1[0])<0 || close(pipefd2[0])<0){
+        perror("Error en close del pipefd padre");
+        exit(-1);
+    }
+
+    printf("resultado: %i + %i = %i \n", val1, val2, (val1)+(val2));
 }

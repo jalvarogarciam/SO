@@ -9,7 +9,6 @@
 
 int main(int argc, char *argv[]) {
     int suma = 0;
-
     // Sumar todos los números pasados como argumentos
     for (int i = 1; i < argc; i++) {
         suma += atoi(argv[i]);

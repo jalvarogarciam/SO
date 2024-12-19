@@ -1,12 +1,6 @@
 #include <stdio.h>
 #include <signal.h>
 
-
-/*Ejercicio 2. Escribe un programa en C llamado contador, tal que cada vez que reciba una
-señal que se pueda manejar, muestre por pantalla la señal y el número de veces que se ha
-recibido ese tipo de señal, y un mensaje inicial indicando las señales que no puede manejar. En el
-cuadro siguiente se muestra un ejemplo de ejecución del programa. */
-
 // Lista de señales a manejar (excluyendo SIGKILL y SIGSTOP)
 const char *signals[] = {
     "SIGHUP", "SIGINT", "SIGQUIT", "SIGILL", "SIGTRAP", "SIGABRT", "SIGBUS", "SIGFPE",
@@ -20,8 +14,8 @@ int contador[64] = {0};
 int terminar = 0;
 
 static void handler (int signum){
-    printf("\nSeñal %d emitida %i veces\n", signum, ++contador[signum-1]);
-    if (signum == SIGTSTP) terminar = 1;
+  printf("\nSeñal %d emitida %i veces\n", signum, ++contador[signum-1]);
+  if (signum == SIGTSTP) terminar = 1;
 }
 
 int main()
@@ -34,7 +28,9 @@ int main()
   sa.sa_flags = SA_RESTART; 
 
   for (int i = 1; i<=32; i++)
-    if (sigaction(i, &sa, NULL) == -1 ){ printf("\nerror en el manejador de la señal %d\n", i);}
+    if (i!=9 && i!=19 && i!=32 && sigaction(i, &sa, NULL) == -1 ){ 
+      printf("\nerror en el manejador de la señal %d\n", i);
+    }
 
   while(terminar==0);
 }

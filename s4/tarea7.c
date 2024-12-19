@@ -1,7 +1,7 @@
 /*
 tarea7.c
-Programa ilustrativo del uso de pipes y la redirección de entrada y
-salida estándar: "ls | sort"
+Programa ilustrativo del uso de pipes y la redirecciï¿½n de entrada y
+salida estï¿½ndar: "ls | sort"
 */
 
 #include<sys/types.h>
@@ -10,50 +10,33 @@ salida estándar: "ls | sort"
 #include<stdio.h>
 #include<stdlib.h>
 #include<errno.h>
+#include<string.h>
+#include <sys/wait.h>
 
 int main(int argc, char *argv[]) 
 {
-int fd[2];
-pid_t PID;
+	int pipefd[2];
+	if (pipe(pipefd)<0){
+		perror("Error en pipe");
+		exit(-1);
+	}
 
-pipe(fd); // Llamada al sistema para crear un pipe
+	int pid = fork();
+	if (pid == 0){
+		close(pipefd[0]);
+		dup2(pipefd[1], STDOUT_FILENO);
+		close(pipefd[1]);
+		execlp("ls", "ls", NULL);
+	}
 
-if ( (PID= fork())<0) {
-	perror("fork");
-	exit(EXIT_FAILURE);
-}
-if(PID == 0) { // ls
-	//Establecer la direccion del flujo de datos en el cauce cerrando
-	// el descriptor de lectura de cauce en el proceso hijo
-	close(fd[0]);
+	wait(NULL);
 
-	//Redirigir la salida estandar para enviar datos al cauce
-	//--------------------------------------------------------
-	//Cerrar la salida estandar del proceso hijo
-	close(STDOUT_FILENO);
+	close(pipefd[1]);
+	dup2(pipefd[0], STDIN_FILENO);
+	close(pipefd[1]);
 
-	//Duplicar el descriptor de escritura en cauce en el descriptor
-	//correspondiente a la salida estandar (stdout)
-	dup(fd[1]);
-	execlp("ls","ls",NULL);
-}
-else { // sort. Estoy en el proceso padre porque PID != 0
-
-	//Establecer la dirección del flujo de datos en el cauce cerrando
-	// el descriptor de escritura en el cauce del proceso padre.
-	close(fd[1]);
-
-	//Redirigir la entrada estándar para tomar los datos del cauce.
-	//Cerrar la entrada estándar del proceso padre
-	close	(STDIN_FILENO);
-
-	//Duplicar el descriptor de lectura de cauce en el descriptor
-	//correspondiente a la entrada estándar (stdin)
-	dup(fd[0]);
-	execlp("sort","sort",NULL);
-}
-
-return EXIT_SUCCESS;
+	execlp("sort", "sort", NULL);
+	return 0;
 }
 
 
